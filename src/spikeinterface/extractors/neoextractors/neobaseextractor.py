@@ -697,9 +697,7 @@ class NeoEventSegment(BaseEventSegment):
         self._t_start = t_start
         self._natural_ids = None
 
-    def get_events(self, channel_id, start_time, end_time):
-        channel_index = list(self.neo_reader.header["event_channels"]["id"]).index(channel_id)
-
+    def _get_events(self, channel_index, start_time=None, end_time=None):
         event_timestamps, event_duration, event_labels = self.neo_reader.get_event_timestamps(
             block_index=self.block_index, seg_index=self.segment_index, event_channel_index=channel_index
         )
@@ -718,3 +716,13 @@ class NeoEventSegment(BaseEventSegment):
         if end_time is not None:
             event = event[event["time"] < end_time]
         return event
+
+    def get_events(self, channel_id, start_time, end_time):
+        channel_index = list(self.neo_reader.header["event_channels"]["id"]).index(channel_id)
+
+        return self._get_events(channel_index=channel_index, start_time=start_time, end_time=end_time)
+
+    def get_events_by_name(self, channel_name, start_time, end_time):
+        channel_index = list(self.neo_reader.header["event_channels"]["name"]).index(channel_name)
+
+        return self._get_events(channel_index=channel_index, start_time=start_time, end_time=end_time)

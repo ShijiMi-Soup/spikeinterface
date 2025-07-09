@@ -98,6 +98,36 @@ class BaseEvent(BaseExtractor):
         seg_ev = self._event_segments[segment_index]
         return seg_ev.get_events(channel_id, start_time, end_time)
 
+    def get_events_by_name(
+        self,
+        channel_name: str | None = None,
+        segment_index: int | None = None,
+        start_time: float | None = None,
+        end_time: float | None = None,
+    ):
+        """
+        Return events of a channel in its native structured type.
+
+        Parameters
+        ----------
+        channel_name : str | None, default: None
+            The event channel name
+        segment_index : int | None, default: None
+            The segment index, required for multi-segment objects
+        start_time : float | None, default: None
+            The start time in seconds
+        end_time : float | None, default: None
+            The end time in seconds
+
+        Returns
+        -------
+        np.array
+            Structured np.array of dtype `get_dtype(channel_name)`
+        """
+        segment_index = self._check_segment_index(segment_index)
+        seg_ev = self._event_segments[segment_index]
+        return seg_ev.get_events_by_name(channel_name, start_time, end_time)
+
     def get_event_times(
         self,
         channel_id: int | str | None = None,
@@ -128,6 +158,36 @@ class BaseEvent(BaseExtractor):
         seg_ev = self._event_segments[segment_index]
         return seg_ev.get_event_times(channel_id, start_time, end_time)
 
+    def get_event_times_by_name(
+        self,
+        channel_name: str | None = None,
+        segment_index: int | None = None,
+        start_time: float | None = None,
+        end_time: float | None = None,
+    ):
+        """
+        Return events timestamps of a channel in seconds.
+
+        Parameters
+        ----------
+        channel_str : str | None, default: None
+            The event channel name
+        segment_index : int | None, default: None
+            The segment index, required for multi-segment objects
+        start_time : float | None, default: None
+            The start time in seconds
+        end_time : float | None, default: None
+            The end time in seconds
+
+        Returns
+        -------
+        np.array
+            1d array of timestamps for the event channel
+        """
+        segment_index = self._check_segment_index(segment_index)
+        seg_ev = self._event_segments[segment_index]
+        return seg_ev.get_event_times_by_name(channel_name, start_time, end_time)
+
 
 class BaseEventSegment(BaseSegment):
     """
@@ -136,6 +196,30 @@ class BaseEventSegment(BaseSegment):
 
     def __init__(self):
         BaseSegment.__init__(self)
+
+    def _extract_timestamps(self, events: np.ndarray) -> np.ndarray:
+        """
+        Extract timestamps from event data.
+
+        Parameters
+        ----------
+        events : np.ndarray
+            Event data, either as a simple array of timestamps or structured array
+            with 'time' or 'timestamp' fields.
+
+        Returns
+        -------
+        np.ndarray
+            1d array of timestamps.
+        """
+        if events.dtype.fields is None:
+            times = events
+        else:
+            if "time" in events.dtype.names:
+                times = events["time"]
+            else:
+                times = events["timestamp"]
+        return times
 
     def get_event_times(self, channel_id: int | str, start_time: float, end_time: float) -> np.ndarray:
         """Returns event timestamps of a channel in seconds
@@ -154,15 +238,31 @@ class BaseEventSegment(BaseSegment):
             1d array of timestamps for the event channel
         """
         events = self.get_events(channel_id, start_time, end_time)
-        if events.dtype.fields is None:
-            times = events
-        else:
-            if "time" in events.dtype.names:
-                times = events["time"]
-            else:
-                times = events["timestamp"]
-        return times
+        return self._extract_timestamps(events)
+
+    def get_event_times_by_name(self, channel_name: str, start_time: float, end_time: float) -> np.ndarray:
+        """Returns event timestamps of a channel in seconds
+        Parameters
+        ----------
+        channel_name : str
+            The event channel name
+        start_time : float
+            The start time in seconds
+        end_time : float
+            The end time in seconds
+
+        Returns
+        -------
+        np.array
+            1d array of timestamps for the event channel
+        """
+        events = self.get_events_by_name(channel_name, start_time, end_time)
+        return self._extract_timestamps(events)
 
     def get_events(self, channel_id, start_time, end_time):
+        # must be implemented in subclass
+        raise NotImplementedError
+
+    def get_events_by_name(self, channel_name, start_time, end_time):
         # must be implemented in subclass
         raise NotImplementedError
